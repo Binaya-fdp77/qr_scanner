@@ -24,11 +24,7 @@ class _ScanQRCodeState extends State<ScanQRCode> {
       if (!mounted) return;
 
       setState(() {
-        if (qrCode == '-1') {
-          result = 'Scan cancelled';
-        } else {
-          result = qrCode;
-        }
+        result = qrCode == '-1' ? 'Scan cancelled' : qrCode;
       });
     } on PlatformException {
       setState(() {

@@ -1,78 +1,34 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-import 'scan_qr_code.dart';
-import 'generate_qr_code.dart';
+import 'admin_page.dart';
+import 'feedback_page.dart';
+import 'firebase_options.dart';
+import 'theme.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const ReckoApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ReckoApp extends StatelessWidget {
+  const ReckoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      title: 'Recko Restaurant',
       debugShowCheckedModeBanner: false,
-      home: HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('QR Code Scanner & Generator'),
-        backgroundColor: Colors.lightBlueAccent,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ScanQRCode(),
-                  ),
-                );
-              },
-              child: const Text('Scan QR Code'),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const GenerateQRCode(),
-                  ),
-                );
-              },
-              child: const Text('Generate QR Code'),
-            ),
-            const SizedBox(height: 60),
-            const Text(
-              'Created by @binaya',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-      ),
+      theme: buildTheme(),
+      // Customers:  your-site/        Owner:  your-site/#/admin
+      onGenerateRoute: (settings) {
+        final isAdmin = (settings.name ?? '/').startsWith('/admin');
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => isAdmin ? const AdminPage() : const FeedbackPage(),
+        );
+      },
     );
   }
 }

@@ -1,4 +1,4 @@
 const String googleReviewUrl =
-    'https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID';
+    'https://search.google.com/local/writereview?placeid=ChIJu2UEQgDp4joRYKzppnNlYSs';
 
-const String hostedAppUrl = 'https://recko-feedback.web.app';
+const String hostedAppUrl = 'https://reckorestaurant.rf.gd';

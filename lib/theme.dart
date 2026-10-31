@@ -84,7 +84,7 @@ class BrandLogo extends StatelessWidget {
         child: Image.asset(
           'assets/logo.png',
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (context, error, stackTrace) =>
               Icon(Icons.restaurant, size: size * 0.5, color: Brand.ember),
         ),
       ),

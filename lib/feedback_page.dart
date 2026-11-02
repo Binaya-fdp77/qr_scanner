@@ -122,17 +122,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.lock_outline, size: 14, color: Colors.black45),
-                        SizedBox(width: 6),
-                        Text('Your feedback is 100% anonymous',
-                            style:
-                                TextStyle(fontSize: 12, color: Colors.black45)),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -157,16 +146,16 @@ class _FeedbackPageState extends State<FeedbackPage> {
             title: 'It was great!',
             subtitle: 'Rate us on Google',
             colors: const [Color(0xFF22C55E), Color(0xFF15803D)],
-            onTap: () => setState(() => step = _Step.good),
+            onTap: _openReview,
           ),
           const SizedBox(height: 14),
           _BigChoice(
-            emoji: '😞',
-            title: 'Not so good',
-            subtitle: 'Tell us privately',
-            colors: const [Color(0xFFF97316), Color(0xFFC2410C)],
-            onTap: () => setState(() => step = _Step.bad),
-          ),
+  emoji: '😞',
+  title: 'Not so good',
+  subtitle: '🔒 100% anonymous',
+  colors: const [Color(0xFFF97316), Color(0xFFC2410C)],
+  onTap: () => setState(() => step = _Step.bad),
+),
         ],
       );
 
@@ -235,6 +224,31 @@ class _FeedbackPageState extends State<FeedbackPage> {
               'What went wrong? Only our owner will see this.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.black54),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Brand.green.withValues(alpha: .10),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.lock_outline, size: 16, color: Brand.green),
+                  SizedBox(width: 6),
+                  Text(
+                    'Your feedback is 100% anonymous',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Brand.green),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 20),

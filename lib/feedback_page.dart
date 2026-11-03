@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'config.dart';
 import 'theme.dart';
 
-enum _Step { choice, good, bad, thanks }
+enum _Step { choice, private, thanks }
 
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});
@@ -17,8 +17,11 @@ class FeedbackPage extends StatefulWidget {
 class _FeedbackPageState extends State<FeedbackPage> {
   _Step step = _Step.choice;
   bool sending = false;
+  bool leftContact = false;
+  int rating = 0;
   final issues = <String>{};
   final comment = TextEditingController();
+  final table = TextEditingController();
   final contact = TextEditingController();
 
   static const options = <String, IconData>{
@@ -33,6 +36,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
   @override
   void dispose() {
     comment.dispose();
+    table.dispose();
     contact.dispose();
     super.dispose();
   }
@@ -47,8 +51,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
       );
 
   Future<void> _send() async {
-    if (issues.isEmpty && comment.text.trim().isEmpty) {
-      _snack('Please select what went wrong.');
+    if (rating == 0 && issues.isEmpty && comment.text.trim().isEmpty) {
+      _snack('Please tell us a little about what happened.');
       return;
     }
     setState(() => sending = true);
@@ -57,10 +61,17 @@ class _FeedbackPageState extends State<FeedbackPage> {
         'issues': issues.toList(),
         'comment': comment.text.trim(),
         'contact': contact.text.trim(),
+        if (rating > 0) 'rating': rating,
+        if (table.text.trim().isNotEmpty) 'table': table.text.trim(),
         'status': 'new',
         'createdAt': FieldValue.serverTimestamp(),
       }).timeout(const Duration(seconds: 15));
-      if (mounted) setState(() => step = _Step.thanks);
+      if (mounted) {
+        setState(() {
+          leftContact = contact.text.trim().isNotEmpty;
+          step = _Step.thanks;
+        });
+      }
     } catch (_) {
       _snack('Could not send. Please check your internet and try again.');
     } finally {
@@ -72,56 +83,50 @@ class _FeedbackPageState extends State<FeedbackPage> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Scaffold(
-      body: BrandBackground(
+      body: PageBackground(
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 440),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const BrandLogo(size: 96),
-                    const SizedBox(height: 16),
+                    const BrandLogo(size: 64),
+                    const SizedBox(height: 14),
                     Text('Recko Restaurant',
-                        style: t.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700, color: Brand.deep)),
+                        style: t.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
                     const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.location_on, size: 16, color: Brand.ember),
+                        Icon(Icons.location_on_outlined,
+                            size: 15, color: Brand.muted),
                         SizedBox(width: 4),
                         Text('Kattuwa, Negombo',
-                            style: TextStyle(color: Colors.black54)),
+                            style:
+                                TextStyle(color: Brand.muted, fontSize: 13)),
                       ],
                     ),
                     const SizedBox(height: 24),
-                    GlassCard(
+                    AppCard(
                       child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 350),
-                        transitionBuilder: (child, anim) => FadeTransition(
-                          opacity: anim,
-                          child: SlideTransition(
-                            position: Tween(
-                                    begin: const Offset(0, .04),
-                                    end: Offset.zero)
-                                .animate(anim),
-                            child: child,
-                          ),
-                        ),
+                        duration: const Duration(milliseconds: 250),
                         child: KeyedSubtree(
                           key: ValueKey(step),
                           child: switch (step) {
                             _Step.choice => _choice(t),
-                            _Step.good => _good(t),
-                            _Step.bad => _bad(t),
+                            _Step.private => _private(t),
                             _Step.thanks => _thanks(t),
                           },
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    const Text('Takes less than a minute',
+                        style: TextStyle(color: Brand.muted, fontSize: 12)),
                   ],
                 ),
               ),
@@ -132,126 +137,98 @@ class _FeedbackPageState extends State<FeedbackPage> {
     );
   }
 
-  // ---------- Step 1 ----------
+  // ---------- Step 1: choose ----------
   Widget _choice(TextTheme t) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('How was your visit?',
-              style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+              style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          const Text('It takes less than 30 seconds',
-              style: TextStyle(color: Colors.black54)),
-          const SizedBox(height: 22),
-          _BigChoice(
-            emoji: '😊',
-            title: 'It was great!',
-            subtitle: 'Rate us on Google',
-            colors: const [Color(0xFF22C55E), Color(0xFF15803D)],
+          const Text('Your feedback helps us serve you better.',
+              style: TextStyle(color: Brand.muted, fontSize: 13.5)),
+          const SizedBox(height: 18),
+          _ChoiceTile(
+            icon: Icons.star_rounded,
+            color: Brand.star,
+            title: 'I enjoyed my visit',
+            subtitle: 'Share your experience on Google. It helps others '
+                'find us and takes under a minute.',
             onTap: _openReview,
           ),
+          const SizedBox(height: 10),
+          _ChoiceTile(
+            icon: Icons.mail_outline_rounded,
+            color: Brand.ember,
+            title: 'Something could be better',
+            subtitle: 'Tell the owner directly. No name or contact needed.',
+            tag: 'Anonymous',
+            onTap: () => setState(() => step = _Step.private),
+          ),
+          const SizedBox(height: 18),
+          const Divider(height: 1, color: Brand.line),
           const SizedBox(height: 14),
-          _BigChoice(
-  emoji: '😞',
-  title: 'Not so good',
-  subtitle: '🔒 100% anonymous',
-  colors: const [Color(0xFFF97316), Color(0xFFC2410C)],
-  onTap: () => setState(() => step = _Step.bad),
-),
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.verified_user_outlined,
+                  size: 16, color: Brand.muted),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Every private message is read personally by the owner.',
+                  style: TextStyle(
+                      color: Brand.muted, fontSize: 12.5, height: 1.4),
+                ),
+              ),
+            ],
+          ),
         ],
       );
 
-  // ---------- Good ----------
-  Widget _good(TextTheme t) => Column(
+  // ---------- Step 2: private feedback ----------
+  Widget _private(TextTheme t) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Thank you! 🎉',
-              style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          const Text(
-            'Share your experience on Google.\nIt takes just 10 seconds and means a lot to us.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54, height: 1.5),
+          TextButton.icon(
+            onPressed: () => setState(() => step = _Step.choice),
+            icon: const Icon(Icons.arrow_back_rounded, size: 18),
+            label: const Text('Back'),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          const SizedBox(height: 8),
+          Text('Tell us how we can improve',
+              style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (var i = 0; i < 5; i++)
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: Duration(milliseconds: 500 + i * 150),
-                  curve: Curves.elasticOut,
-                  builder: (_, v, child) =>
-                      Transform.scale(scale: v, child: child),
-                  child: const Icon(Icons.star_rounded,
-                      size: 44, color: Color(0xFFF59E0B)),
+              Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(Icons.lock_outline_rounded,
+                    size: 15, color: Brand.muted),
+              ),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Anonymous by default. This goes straight to the owner and is never posted publicly.',
+                  style: TextStyle(
+                      color: Brand.muted, fontSize: 13, height: 1.4),
                 ),
+              ),
             ],
           ),
           const SizedBox(height: 22),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton.icon(
-              onPressed: _openReview,
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Open Google Reviews'),
-              style: FilledButton.styleFrom(
-                backgroundColor: Brand.green,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                textStyle:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-              ),
-            ),
+          const _FieldLabel('Overall experience (optional)'),
+          _StarPicker(
+            value: rating,
+            onChanged: (v) => setState(() => rating = v),
           ),
-          TextButton(
-            onPressed: () => setState(() => step = _Step.choice),
-            child: const Text('Back'),
-          ),
-        ],
-      );
-
-  // ---------- Bad ----------
-  Widget _bad(TextTheme t) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Text("We're sorry 💔",
-                style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 6),
-          const Center(
-            child: Text(
-              'What went wrong? Only our owner will see this.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Brand.green.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.lock_outline, size: 16, color: Brand.green),
-                  SizedBox(width: 6),
-                  Text(
-                    'Your feedback is 100% anonymous',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Brand.green),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
+          const _FieldLabel('What was this about?'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -260,166 +237,239 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 FilterChip(
                   showCheckmark: false,
                   avatar: Icon(e.value,
-                      size: 18,
+                      size: 16,
                       color: issues.contains(e.key)
                           ? Brand.ember
-                          : Colors.black45),
-                  label: Text(e.key),
+                          : Brand.muted),
+                  label: Text(e.key, style: const TextStyle(fontSize: 13)),
                   selected: issues.contains(e.key),
-                  selectedColor: Brand.ember.withValues(alpha: .14),
-                  backgroundColor: const Color(0xFFFFFBF7),
+                  selectedColor: Brand.ember.withValues(alpha: .10),
+                  backgroundColor: Colors.white,
                   side: BorderSide(
-                      color: issues.contains(e.key)
-                          ? Brand.ember
-                          : const Color(0xFFE7E5E4)),
+                      color:
+                          issues.contains(e.key) ? Brand.ember : Brand.line),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(10)),
                   onSelected: (v) => setState(
                       () => v ? issues.add(e.key) : issues.remove(e.key)),
                 ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
+          const _FieldLabel('Details'),
           TextField(
             controller: comment,
             minLines: 3,
             maxLines: 6,
             maxLength: 1000,
             decoration: const InputDecoration(
-              hintText: 'Tell us more (optional)',
+              hintText: 'Share as much or as little as you like',
+              counterText: '',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: table,
+            maxLength: 10,
+            decoration: const InputDecoration(
+              hintText: 'Table number (optional)',
+              prefixIcon: Icon(Icons.table_restaurant_outlined, size: 20),
               counterText: '',
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: contact,
-            keyboardType: TextInputType.phone,
-            maxLength: 40,
+            keyboardType: TextInputType.emailAddress,
+            maxLength: 60,
             decoration: const InputDecoration(
-              hintText: 'Phone – only if you want us to call you back',
-              prefixIcon: Icon(Icons.phone_outlined),
+              hintText: 'Phone or email (optional)',
+              helperText: 'Leave blank to stay anonymous. Add it only if you would like a reply.',
+              prefixIcon: Icon(Icons.phone_outlined, size: 20),
               counterText: '',
             ),
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: FilledButton(
-              onPressed: sending ? null : _send,
-              style: FilledButton.styleFrom(
-                backgroundColor: Brand.ember,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                textStyle:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-              ),
-              child: sending
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.5, color: Colors.white),
-                    )
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.send_rounded, size: 20),
-                        SizedBox(width: 10),
-                        Text('Send anonymously'),
-                      ],
-                    ),
-            ),
+          const SizedBox(height: 22),
+          FilledButton(
+            onPressed: sending ? null : _send,
+            child: sending
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.2, color: Colors.white),
+                  )
+                : const Text('Send anonymously'),
           ),
+          const SizedBox(height: 4),
+          // Always leave the public route open - it is fairer to guests
+          // and keeps the flow within Google's review policies.
           Center(
             child: TextButton(
-              onPressed: () => setState(() => step = _Step.choice),
-              child: const Text('Back'),
+              onPressed: _openReview,
+              child: const Text('Prefer to share publicly? Review us on Google'),
             ),
           ),
         ],
       );
 
-  // ---------- Thanks ----------
+  // ---------- Step 3: thanks ----------
   Widget _thanks(TextTheme t) => Column(
         children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 700),
-            curve: Curves.elasticOut,
-            builder: (_, v, child) => Transform.scale(scale: v, child: child),
-            child: const Icon(Icons.check_circle_rounded,
-                size: 84, color: Brand.green),
-          ),
-          const SizedBox(height: 14),
-          Text('Message sent',
-              style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          const Text(
-            "Thank you for telling us.\nWe'll use it to make things right.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54, height: 1.5),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Brand.green.withValues(alpha: .10),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_rounded,
+                size: 30, color: Brand.green),
           ),
+          const SizedBox(height: 16),
+          Text('Thank you',
+              style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text(
+            leftContact
+                ? 'Your message has reached the owner.\nWe will get back to you soon.'
+                : 'Your message has reached the owner.\nWe will use it to improve.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                color: Brand.muted, fontSize: 13.5, height: 1.5),
+          ),
+          const SizedBox(height: 8),
         ],
       );
 }
 
-class _BigChoice extends StatelessWidget {
-  const _BigChoice({
-    required this.emoji,
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(text,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      );
+}
+
+class _StarPicker extends StatelessWidget {
+  const _StarPicker({required this.value, required this.onChanged});
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 1; i <= 5; i++)
+          InkResponse(
+            radius: 24,
+            // Tapping the current rating again clears it.
+            onTap: () => onChanged(value == i ? 0 : i),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Icon(
+                i <= value ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: 34,
+                color: i <= value ? Brand.star : Brand.line,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({
+    required this.icon,
+    required this.color,
     required this.title,
     required this.subtitle,
-    required this.colors,
     required this.onTap,
+    this.tag,
   });
-  final String emoji, title, subtitle;
-  final List<Color> colors;
+  final IconData icon;
+  final Color color;
+  final String title, subtitle;
+  final String? tag;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: colors),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: colors.last.withValues(alpha: .35),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-            child: Row(
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 36)),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700)),
-                      Text(subtitle,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 13)),
-                    ],
-                  ),
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Brand.line),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const Icon(Icons.arrow_forward_rounded, color: Colors.white),
-              ],
-            ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(title,
+                              style: const TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                        ),
+                        if (tag != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Brand.tint,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.lock_outline_rounded,
+                                    size: 11, color: Brand.muted),
+                                const SizedBox(width: 3),
+                                Text(tag!,
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Brand.muted)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 13, color: Brand.muted)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Brand.muted),
+            ],
           ),
         ),
       ),

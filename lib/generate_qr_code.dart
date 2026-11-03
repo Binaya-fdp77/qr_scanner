@@ -26,22 +26,27 @@ class _GenerateQRCodeState extends State<GenerateQRCode> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Recko QR Code'),
-        backgroundColor: Colors.transparent,
+        title: const Text('QR Code'),
+        backgroundColor: Brand.bg,
+        surfaceTintColor: Colors.transparent,
       ),
-      body: BrandBackground(
+      body: PageBackground(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: GlassCard(
+              child: AppCard(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (controller.text.trim().isNotEmpty)
                       Container(
-                        color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Brand.line),
+                        ),
                         padding: const EdgeInsets.all(12),
                         child: QrImageView(
                           data: controller.text.trim(),
@@ -59,7 +64,7 @@ class _GenerateQRCodeState extends State<GenerateQRCode> {
                     const SizedBox(height: 12),
                     const Text(
                       'Screenshot this QR code to print it.',
-                      style: TextStyle(color: Colors.black54),
+                      style: TextStyle(color: Brand.muted, fontSize: 13),
                     ),
                   ],
                 ),

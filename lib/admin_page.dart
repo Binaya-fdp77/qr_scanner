@@ -16,7 +16,7 @@ class AdminPage extends StatelessWidget {
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: BrandBackground(
+            body: PageBackground(
                 child: Center(child: CircularProgressIndicator())),
           );
         }
@@ -40,6 +40,13 @@ class _LoginViewState extends State<_LoginView> {
   bool busy = false, hide = true;
   String? error;
 
+  @override
+  void dispose() {
+    email.dispose();
+    pass.dispose();
+    super.dispose();
+  }
+
   Future<void> _login() async {
     setState(() {
       busy = true;
@@ -59,7 +66,7 @@ class _LoginViewState extends State<_LoginView> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Scaffold(
-      body: BrandBackground(
+      body: PageBackground(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -68,13 +75,16 @@ class _LoginViewState extends State<_LoginView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const BrandLogo(size: 88),
-                  const SizedBox(height: 16),
+                  const BrandLogo(size: 64),
+                  const SizedBox(height: 14),
                   Text('Owner Portal',
-                      style: t.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700, color: Brand.deep)),
-                  const SizedBox(height: 20),
-                  GlassCard(
+                      style:
+                          t.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  const Text('Sign in to view guest feedback',
+                      style: TextStyle(color: Brand.muted, fontSize: 13)),
+                  const SizedBox(height: 24),
+                  AppCard(
                     child: Column(
                       children: [
                         TextField(
@@ -82,7 +92,7 @@ class _LoginViewState extends State<_LoginView> {
                           keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
                             hintText: 'Email',
-                            prefixIcon: Icon(Icons.mail_outline),
+                            prefixIcon: Icon(Icons.mail_outline, size: 20),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -92,43 +102,36 @@ class _LoginViewState extends State<_LoginView> {
                           onSubmitted: (_) => _login(),
                           decoration: InputDecoration(
                             hintText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
+                            prefixIcon: const Icon(Icons.lock_outline, size: 20),
                             suffixIcon: IconButton(
-                              icon: Icon(hide
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined),
+                              icon: Icon(
+                                  hide
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                  size: 20),
                               onPressed: () => setState(() => hide = !hide),
                             ),
                           ),
                         ),
                         if (error != null) ...[
                           const SizedBox(height: 12),
-                          Text(error!,
-                              style: const TextStyle(color: Brand.red)),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(error!,
+                                style: const TextStyle(
+                                    color: Brand.red, fontSize: 13)),
+                          ),
                         ],
                         const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: FilledButton(
-                            onPressed: busy ? null : _login,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Brand.ember,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
-                            ),
-                            child: busy
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: Colors.white))
-                                : const Text('Sign in',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600)),
-                          ),
+                        FilledButton(
+                          onPressed: busy ? null : _login,
+                          child: busy
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2.2, color: Colors.white))
+                              : const Text('Sign in'),
                         ),
                       ],
                     ),
@@ -162,7 +165,7 @@ class _DashboardState extends State<_Dashboard> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Scaffold(
-      body: BrandBackground(
+      body: PageBackground(
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -189,12 +192,15 @@ class _DashboardState extends State<_Dashboard> {
                   // ---- stats ----
                   final fresh =
                       docs.where((d) => d.data()['status'] == 'new').length;
-                  final weekAgo =
-                      DateTime.now().subtract(const Duration(days: 7));
-                  final week = docs.where((d) {
-                    final ts = (d.data()['createdAt'] as Timestamp?)?.toDate();
-                    return ts != null && ts.isAfter(weekAgo);
-                  }).length;
+                  final ratings = docs
+                      .map((d) => (d.data()['rating'] as num?)?.toDouble())
+                      .whereType<double>()
+                      .where((r) => r > 0)
+                      .toList();
+                  final avg = ratings.isEmpty
+                      ? '–'
+                      : (ratings.reduce((a, b) => a + b) / ratings.length)
+                          .toStringAsFixed(1);
                   final counts = <String, int>{};
                   for (final d in docs) {
                     for (final i
@@ -222,19 +228,18 @@ class _DashboardState extends State<_Dashboard> {
                       // header
                       Row(
                         children: [
-                          const BrandLogo(size: 52),
-                          const SizedBox(width: 14),
+                          const BrandLogo(size: 44),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('Feedback Inbox',
-                                    style: t.titleLarge?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        color: Brand.deep)),
-                                const Text('Recko Restaurant • Anonymous',
+                                    style: t.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w700)),
+                                const Text('Recko Restaurant · Private feedback',
                                     style: TextStyle(
-                                        color: Colors.black54, fontSize: 12)),
+                                        color: Brand.muted, fontSize: 12)),
                               ],
                             ),
                           ),
@@ -261,21 +266,16 @@ class _DashboardState extends State<_Dashboard> {
                         final w = box.maxWidth >= 600
                             ? (box.maxWidth - 36) / 4
                             : (box.maxWidth - 12) / 2;
-                        Widget s(String l, String v, IconData i, Color c) =>
-                            SizedBox(
-                                width: w, child: _StatCard(l, v, i, c));
+                        Widget s(String l, String v) =>
+                            SizedBox(width: w, child: _StatCard(l, v));
                         return Wrap(
                           spacing: 12,
                           runSpacing: 12,
                           children: [
-                            s('Total', '${docs.length}', Icons.inbox_outlined,
-                                Brand.deep),
-                            s('New', '$fresh', Icons.mark_email_unread_outlined,
-                                Brand.ember),
-                            s('Last 7 days', '$week', Icons.date_range_outlined,
-                                const Color(0xFF2563EB)),
-                            s('Top issue', top, Icons.trending_up_rounded,
-                                Brand.red),
+                            s('Total', '${docs.length}'),
+                            s('New', '$fresh'),
+                            s('Avg. rating', avg),
+                            s('Top issue', top),
                           ],
                         );
                       }),
@@ -283,6 +283,7 @@ class _DashboardState extends State<_Dashboard> {
 
                       // filter
                       SegmentedButton<String>(
+                        showSelectedIcon: false,
                         segments: const [
                           ButtonSegment(value: 'all', label: Text('All')),
                           ButtonSegment(value: 'new', label: Text('New')),
@@ -293,7 +294,7 @@ class _DashboardState extends State<_Dashboard> {
                         onSelectionChanged: (s) =>
                             setState(() => filter = s.first),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
 
                       if (shown.isEmpty)
                         const Padding(
@@ -301,10 +302,10 @@ class _DashboardState extends State<_Dashboard> {
                           child: Column(
                             children: [
                               Icon(Icons.inbox_outlined,
-                                  size: 56, color: Colors.black26),
+                                  size: 44, color: Brand.line),
                               SizedBox(height: 10),
                               Text('Nothing here yet',
-                                  style: TextStyle(color: Colors.black45)),
+                                  style: TextStyle(color: Brand.muted)),
                             ],
                           ),
                         )
@@ -323,51 +324,29 @@ class _DashboardState extends State<_Dashboard> {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard(this.label, this.value, this.icon, this.color);
+  const _StatCard(this.label, this.value);
   final String label, value;
-  final IconData icon;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: .05),
-              blurRadius: 16,
-              offset: const Offset(0, 6)),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Brand.line),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
-                Text(label,
-                    style:
-                        const TextStyle(fontSize: 11, color: Colors.black54)),
-              ],
-            ),
-          ),
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Brand.muted)),
+          const SizedBox(height: 4),
+          Text(value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -385,23 +364,22 @@ class _FeedbackCard extends StatelessWidget {
     ];
     final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
     final ap = d.hour >= 12 ? 'PM' : 'AM';
-    return '${m[d.month - 1]} ${d.day}, ${d.year} • $h:${d.minute.toString().padLeft(2, '0')} $ap';
+    return '${m[d.month - 1]} ${d.day}, ${d.year} · $h:${d.minute.toString().padLeft(2, '0')} $ap';
   }
 
   Future<void> _delete(BuildContext context) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Delete this feedback?'),
         content: const Text('This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel')),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child:
-                  const Text('Delete', style: TextStyle(color: Brand.red))),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete', style: TextStyle(color: Brand.red))),
         ],
       ),
     );
@@ -415,90 +393,102 @@ class _FeedbackCard extends StatelessWidget {
     final issues = List<String>.from(d['issues'] ?? const []);
     final comment = (d['comment'] ?? '') as String;
     final contact = (d['contact'] ?? '') as String;
+    final tableNo = (d['table'] ?? '') as String;
+    final rating = (d['rating'] as num?)?.toInt() ?? 0;
     final time = (d['createdAt'] as Timestamp?)?.toDate();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: isNew ? Brand.ember.withValues(alpha: .4) : Colors.black12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: .04),
-              blurRadius: 16,
-              offset: const Offset(0, 6)),
-        ],
+            color: isNew ? Brand.ember.withValues(alpha: .45) : Brand.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const CircleAvatar(
-                radius: 18,
-                backgroundColor: Brand.cream,
-                child: Icon(Icons.person_outline, color: Brand.ember),
-              ),
-              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                        'Anonymous guest #${doc.id.substring(0, 4).toUpperCase()}',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text('Guest #${doc.id.substring(0, 4).toUpperCase()}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 14.5)),
+                    const SizedBox(height: 2),
                     Text(time == null ? 'Just now' : _fmt(time),
                         style: const TextStyle(
-                            fontSize: 12, color: Colors.black54)),
+                            fontSize: 12, color: Brand.muted)),
                   ],
                 ),
               ),
-              _Pill(isNew ? 'NEW' : 'RESOLVED',
+              _Pill(isNew ? 'New' : 'Resolved',
                   isNew ? Brand.ember : Brand.green),
             ],
           ),
-          if (issues.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+          if (rating > 0) ...[
+            const SizedBox(height: 10),
+            Row(
               children: [
-                for (final i in issues)
-                  Chip(
-                    label: Text(i, style: const TextStyle(fontSize: 12)),
-                    backgroundColor: Brand.cream,
-                    side: BorderSide.none,
-                    visualDensity: VisualDensity.compact,
+                for (var i = 1; i <= 5; i++)
+                  Icon(
+                    i <= rating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    size: 20,
+                    color: i <= rating ? Brand.star : Brand.line,
                   ),
+              ],
+            ),
+          ],
+          if (issues.isNotEmpty || tableNo.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final i in issues) _Tag(i),
+                if (tableNo.isNotEmpty)
+                  _Tag('Table $tableNo', icon: Icons.table_restaurant_outlined),
               ],
             ),
           ],
           if (comment.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(comment, style: const TextStyle(height: 1.5)),
+            Text(comment, style: const TextStyle(height: 1.5, fontSize: 14)),
           ],
           if (contact.isNotEmpty) ...[
             const SizedBox(height: 12),
             InkWell(
-              onTap: () => launchUrl(Uri.parse('tel:$contact')),
+              onTap: () => launchUrl(Uri(
+                  scheme: contact.contains('@') ? 'mailto' : 'tel',
+                  path: contact)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.phone_outlined,
-                      size: 16, color: Brand.green),
+                  Icon(
+                      contact.contains('@')
+                          ? Icons.mail_outline
+                          : Icons.phone_outlined,
+                      size: 16,
+                      color: Brand.green),
                   const SizedBox(width: 6),
-                  Text('Call back: $contact',
-                      style: const TextStyle(
-                          color: Brand.green, fontWeight: FontWeight.w600)),
+                  Flexible(
+                    child: Text('Reply to: $contact',
+                        style: const TextStyle(
+                            color: Brand.green,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13.5)),
+                  ),
                 ],
               ),
             ),
           ],
-          const SizedBox(height: 10),
-          const Divider(height: 1),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: Brand.line),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -514,11 +504,37 @@ class _FeedbackCard extends StatelessWidget {
                 onPressed: () => _delete(context),
                 icon: const Icon(Icons.delete_outline,
                     size: 18, color: Brand.red),
-                label:
-                    const Text('Delete', style: TextStyle(color: Brand.red)),
+                label: const Text('Delete', style: TextStyle(color: Brand.red)),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag(this.text, {this.icon});
+  final String text;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: Brand.tint,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: Brand.muted),
+            const SizedBox(width: 4),
+          ],
+          Text(text, style: const TextStyle(fontSize: 12)),
         ],
       ),
     );
@@ -533,14 +549,14 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: .12),
+        color: color.withValues(alpha: .10),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(text,
           style: TextStyle(
-              color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+              color: color, fontSize: 11.5, fontWeight: FontWeight.w600)),
     );
   }
 }
